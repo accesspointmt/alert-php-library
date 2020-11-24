@@ -388,7 +388,6 @@
                 $resultNode = $parentNode[0]->GetTransactionHistoryResponse[0]->GetTransactionHistoryResult[0];
                 return $resultNode;
             } catch (\Exception $ex) {
-                print_r($ex);
                 throw new \Exception("Unable to retrieve transaction.");
             }
         }
@@ -435,7 +434,6 @@
 
                 return $xml;
             } catch (\Exception $ex) {
-                print_r($ex);
                 throw new \Exception("Unable to retrieve allowed transactions.");
             }
         }
@@ -530,9 +528,6 @@
 
                 $this->soap->AddCard($params);
 
-                echo "<br/>";
-                echo "<textarea>".$this->soap->__getLastRequest()."</textarea>";
-                echo "<br/>";
                 $xml = @simplexml_load_string($this->soap->__getLastResponse());
                 $parentNode = $xml->xpath("soap:Body");
                 $resultNode = $parentNode[0]->AddCardResponse[0]->AddCardResult[0];
@@ -633,8 +628,6 @@
 
                 $xml = @simplexml_load_string($this->soap->__getLastResponse());
 
-                print_r($xml);
-
                 $parentNode = $xml->xpath("soap:Body");
                 $resultNode = $parentNode[0]->UpdateCardResponse[0]->UpdateCardResult[0];
 
@@ -669,8 +662,6 @@
 
                 
                 $this->soap->GetCards($params);
-
-                print_r($this->soap->__getLastRequest());
 
                 $xml = @simplexml_load_string($this->soap->__getLastResponse());
                 $parentNode = $xml->xpath("soap:Body");
