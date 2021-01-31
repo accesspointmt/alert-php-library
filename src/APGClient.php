@@ -12,7 +12,7 @@
         public $strTerminalURL;
         public $CardDetails;
         public $MerchantDetails;
-        public $CardGuid;
+        public $CardGUID;
         public $CardGuids;
         public $BankMerchantNo;
         public $MerchantBankIDs;
@@ -35,7 +35,7 @@
         public $CardExpiryMonth;
         public $CardExpiryYear;
         public $CVV;
-        public $CardGuid;
+        public $CardGUID;
     }
 
     class MerchantDetails {
@@ -47,11 +47,11 @@
     }
 
     class BankMerchantIDs {
-        public $string;
+        public $string = array();
     }
 
     class CardGuids {
-        public $guid;
+        public $guid = array();
     }
 
     class Request {
@@ -145,8 +145,7 @@
         public $soap;
 
 
-        public function __construct()
-        {
+        public function __construct(){
             $arguments = func_get_args();
             $numberOfArguments = func_num_args();
     
@@ -156,8 +155,7 @@
         }
 
 
-        function __construct2($secureAPGPath, $referringURL)
-        {
+        function __construct2($secureAPGPath, $referringURL){
             $this->referringURL = $referringURL;
             $this->ClientIP = $_SERVER["REMOTE_ADDR"];
             $this->APGClientConfiguration = new \APGClientConfiguration($secureAPGPath);
@@ -168,11 +166,10 @@
             $this->soap->__setSoapHeaders($this->GetSoapHeader());
         }
 
-        function __construct3($secureAPGUserName,$secureAPGPassword, $referringURL)
-        {
+        function __construct3($secureAPGUserName,$secureAPGPassword, $referringURL){
             $this->referringURL = $referringURL;
             $this->ClientIP = $_SERVER["REMOTE_ADDR"];
-            $this->APGClientConfiguration = new \APGClientConfiguration();
+            $this->APGClientConfiguration = new \APGClientConfiguration($secureAPGUserName, $secureAPGPassword);
 
             $this->soap = @new \SoapClient($this->APGClientConfiguration->WSDL, array('trace' => 1));
 
@@ -211,7 +208,7 @@
 
                 if($CardGuid != null && $ApplicationGuid != null){
                     $params->ApplicationGuid = $ApplicationGuid;
-                    $params->CardGuid = $CardGuid;
+                    $params->CardGUID = $CardGuid;
                 }
 
                 //Make request to ProcessTransaction method
@@ -271,7 +268,7 @@
                 
                 if($CardGuid != null && $ApplicationGuid != null){
                     $params->ApplicationGuid = $ApplicationGuid;
-                    $params->CardGuid = $CardGuid;
+                    $params->CardGUID = $CardGuid;
                 }
 
                 if($CardGuid != null && $ApplicationGuid != null){
@@ -492,9 +489,6 @@
 
                 $resultNode = $this->GetInitToken();
 
-
-                //$objRequest->KeyID = (string) $resultNode->KeyID;
-
                 $cardDetails = new CardDetails();
                 $cardDetails->CardHolder = $this->EncryptString($objRequest->CardHolder, $resultNode->Key);
                 $cardDetails->CardNumber = $this->EncryptString($objRequest->CardNumber, $resultNode->Key);
@@ -503,11 +497,16 @@
                 $cardDetails->CardExpiryYear = $this->EncryptString($objRequest->ExpiryYear, $resultNode->Key);
                 $cardDetails->CVV = $this->EncryptString($objRequest->CVV2, $resultNode->Key);
 
-                $xml = @simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
-
                 $authorization = new Authorization();
-                $authorization->UserID = $xml->UserID;
-                $authorization->Password = $xml->Password;
+                if($this->APGClientConfiguration->secureDOTapgPath != ""){
+                    $xml = @simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
+
+                    $authorization->UserID = $xml->UserID;
+                    $authorization->Password = $xml->Password;
+                }else{
+                    $authorization->UserID = $this->APGClientConfiguration->User;
+                    $authorization->Password = $this->APGClientConfiguration->Pass;
+                }
                 $authorization->ReferringURL = $this->referringURL;
 
 
@@ -538,24 +537,21 @@
             }
         }
 
-        function RemoveCard($objRequest, $AppGUID, $CardGuid, $BankMerchantNo) {
+        function RemoveCard($CardGuid, $AppGUID, $BankMerchantNo) {
             try {
 
                 $resultNode = $this->GetInitToken();
 
-                /*$objRequest->CardNumber = $this->EncryptString($objRequest->CardNumber, $resultNode->Key);
-                $objRequest->CardHolder = $this->EncryptString($objRequest->CardHolder, $resultNode->Key);
-                $objRequest->CardBrand = $this->EncryptString($objRequest->CardBrand, $resultNode->Key);
-                $objRequest->CVV2 = $this->EncryptString($objRequest->CVV2, $resultNode->Key);
-                $objRequest->ExpiryYear = $this->EncryptString($objRequest->ExpiryYear, $resultNode->Key);
-                $objRequest->ExpiryMonth = $this->EncryptString($objRequest->ExpiryMonth, $resultNode->Key);
-                $objRequest->ExpiryDay = $this->EncryptString($objRequest->ExpiryDay, $resultNode->Key);*/
-
-                $xml = @simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
-
                 $authorization = new Authorization();
-                $authorization->UserID = $xml->UserID;
-                $authorization->Password = $xml->Password;
+                if($this->APGClientConfiguration->secureDOTapgPath != ""){
+                    $xml = @simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
+
+                    $authorization->UserID = $xml->UserID;
+                    $authorization->Password = $xml->Password;
+                }else{
+                    $authorization->UserID = $this->APGClientConfiguration->User;
+                    $authorization->Password = $this->APGClientConfiguration->Pass;
+                }
                 $authorization->ReferringURL = $this->referringURL;
 
                 $merchantDetails = new MerchantDetails();
@@ -566,8 +562,7 @@
 
                 $params = new Params();
                 $params->MerchantDetails = $merchantDetails;
-                $params->CardGuid = $CardGuid;
-                $params->
+                $params->CardGUID = $CardGuid;
 
                 $this->soap->RemoveCard($params);
 
@@ -581,31 +576,25 @@
             }
         }
 
-        function UpdateCard($objRequest, $AppGUID, $CardGuid, $BankMerchantNo, $CardStoredFor=null) {
+        function UpdateCard($objRequest, $CardGuid, $AppGUID, $BankMerchantNo, $CardStoredFor=null) {
             try {
 
                 $resultNode = $this->GetInitToken();
 
-                /*$objRequest->CardNumber = $this->EncryptString($objRequest->CardNumber, $resultNode->Key);
-                $objRequest->CardHolder = $this->EncryptString($objRequest->CardHolder, $resultNode->Key);
-                $objRequest->CardBrand = $this->EncryptString($objRequest->CardBrand, $resultNode->Key);
-                $objRequest->CVV2 = $this->EncryptString($objRequest->CVV2, $resultNode->Key);
-                $objRequest->ExpiryYear = $this->EncryptString($objRequest->ExpiryYear, $resultNode->Key);
-                $objRequest->ExpiryMonth = $this->EncryptString($objRequest->ExpiryMonth, $resultNode->Key);
-                $objRequest->ExpiryDay = $this->EncryptString($objRequest->ExpiryDay, $resultNode->Key);*/
-
-                $xml = @simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
-
                 $authorization = new Authorization();
-                $authorization->UserID = $xml->UserID;
-                $authorization->Password = $xml->Password;
+                if($this->APGClientConfiguration->secureDOTapgPath != ""){
+                    $xml = @simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
+
+                    $authorization->UserID = $xml->UserID;
+                    $authorization->Password = $xml->Password;
+                }else{
+                    $authorization->UserID = $this->APGClientConfiguration->User;
+                    $authorization->Password = $this->APGClientConfiguration->Pass;
+                }
                 $authorization->ReferringURL = $this->referringURL;
 
                 $cardDetails = new CardDetails();
-                $cardDetails->CardGuid = $CardGuid;
-                $cardDetails->CardHolder = $this->EncryptString($objRequest->CardHolder, $resultNode->Key);
-                $cardDetails->CardNumber = $this->EncryptString($objRequest->CardNumber, $resultNode->Key);
-                $cardDetails->CardBrand = $this->EncryptString($objRequest->CardBrand, $resultNode->Key);
+                $cardDetails->CardGUID = $CardGuid;
                 $cardDetails->CardExpiryMonth = $this->EncryptString($objRequest->ExpiryMonth, $resultNode->Key);
                 $cardDetails->CardExpiryYear = $this->EncryptString($objRequest->ExpiryYear, $resultNode->Key);
                 $cardDetails->CVV = $this->EncryptString($objRequest->CVV2, $resultNode->Key);
@@ -619,6 +608,8 @@
                 $params = new Params();
                 $params->CardDetails = $cardDetails;
                 $params->MerchantDetails = $merchantDetails;
+
+                print_r($params);
 
                 if($CardStoredFor != null){
                     $params->CardStoredFor = $CardStoredFor;
@@ -637,29 +628,27 @@
             }
         }
 
-        function GetCards($MerchantBankIds, $CardGuids, $AppGUID) {
+        function GetCards($MerchantBankIds, $CardsIds, $AppGUID) {
 
             try {
                 $bankMerchantIDs = new BankMerchantIDs();
-                $bankMerchantIDs->string = array_filter($MerchantBankIds);
-
-                /*$filename = 'saved_cards.txt';
-                $fp = @fopen($filename, 'r');
-
-                if ($fp) {
-                    $CardGuid = explode("\r\n", fread($fp, filesize($filename)));
-                }*/
-
-                $CardGuids = array_filter($CardGuids);
+                if(is_array($MerchantBankIds)){
+                    $bankMerchantIDs->string = $MerchantBankIds;
+                }else{
+                    $bankMerchantIDs->string[] = $MerchantBankIds;
+                }
 
                 $CardGuids = new CardGuids();
-                $CardGuids->guid = $CardGuids;
+                if(is_array($CardsIds)){
+                    $CardGuids->guid = $CardsIds;
+                }else{
+                    $CardGuids->guid[] = $CardsIds;
+                }
 
                 $params = new Params();
                 $params->CardGuids = $CardGuids;
                 $params->ApplicationGuid = $AppGUID;
                 $params->MerchantBankIDs = $bankMerchantIDs;
-
                 
                 $this->soap->GetCards($params);
 
@@ -718,44 +707,37 @@
         }
 
         /* <summary>
-        * Returns the current URL as string
-        * </summary>
-        */
-
-        /*private function selfURL() {
-            if (!isset($_SERVER['REQUEST_URI'])) {
-                $serverrequri = $_SERVER['PHP_SELF'];
-            } else {
-                $serverrequri = $_SERVER['REQUEST_URI'];
-            }
-            $s = empty($_SERVER["HTTPS"]) ? '' : (($_SERVER["HTTPS"] == "on") ? "s" : "");
-            $protocol = $this->strleft(strtolower($_SERVER["SERVER_PROTOCOL"]), "/") . $s;
-            $port = ($_SERVER["SERVER_PORT"] == "80") ? "" : (":" . $_SERVER["SERVER_PORT"]);
-            return $protocol . "://" . $_SERVER['SERVER_NAME'] . $port . $serverrequri;
-        }
-
-        private function strleft($s1, $s2) {
-            return substr($s1, 0, strpos($s1, $s2));
-        }*/
-
-        /* <summary>
         * Returns the SOAP header the way it's needed.
         * </summary>
         */
 
         private function GetSoapHeader() {
 
-            $xml = simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
+            if($this->APGClientConfiguration->secureDOTapgPath != ""){
+                $xml = @simplexml_load_file($this->APGClientConfiguration->secureDOTapgPath);
 
-            /* Body of the SOAP Header. */
-            $headerbody = array('Identification' => 
-                array(
-                    'UserID' => $xml->UserID,
-                    'Password' => $xml->Password,
-                    'ReferringURL' => $this->referringURL
-                )
-            );
-            /* Create SOAP Header. */
+                /* Body of the SOAP Header. */
+                $headerbody = array('Identification' => 
+                    array(
+                        'UserID' => $xml->UserID,
+                        'Password' => $xml->Password,
+                        'ReferringURL' => $this->referringURL
+                    )
+                );
+                /* Create SOAP Header. */
+            }else{                
+                /* Body of the SOAP Header. */
+                $headerbody = array('Identification' => 
+                    array(
+                        'UserID' => $this->APGClientConfiguration->User,
+                        'Password' => $this->APGClientConfiguration->Pass,
+                        'ReferringURL' => $this->referringURL
+                    )
+                );
+                /* Create SOAP Header. */
+            }
+
+
             return new \SOAPHeader($this->APGClientConfiguration->NameSpace, 'SecureSoapHeader', $headerbody);
         }
 

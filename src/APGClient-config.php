@@ -4,6 +4,9 @@
         public $WSDL = __DIR__ . '/service.wsdl'; // Physical path to WSDL file. Should be in a non web-accessible directory
         public $secureDOTapgPath = ""; // Physical path to secure.apg file. Should be in a non web-accessible directory
         public $NameSpace = "https://pgws.alert.com.mt/"; // Namespace. Do not modify.
+        
+        public $User = "";
+        public $Pass = "";
 
         public function __construct()
         {
@@ -19,7 +22,9 @@
             $this->secureDOTapgPath = $secureAPGPath;
         }
 
-        function __construct0(){
+        function __construct2($User, $Pass){
+            $this->$User = $User;
+            $this->$Pass = $Pass;
             return;
         }
 
